@@ -5,17 +5,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#F20B70">
-  <meta name="description" content="Fresa Pa’Llevar. Fresas con crema para disfrutar. ¡Pide a domicilio!">
+  <meta name="description" content="Fresa Pa’Llevar. Fresas con crema a domicilio.">
   <title>Fresa Pa’Llevar 🍓</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet">
 
+  <!-- Biblioteca gratuita para el mapa -->
+  <link rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -45,12 +47,15 @@
       margin: 0 auto 28px;
     }
 
-    h1 {
+    h1, h2 {
       font-family: 'Anton', sans-serif;
-      font-size: clamp(29px, 8vw, 43px);
       font-weight: 400;
-      line-height: 1.15;
       letter-spacing: 1px;
+      line-height: 1.15;
+    }
+
+    h1 {
+      font-size: clamp(29px, 8vw, 43px);
       margin: 0 0 13px;
     }
 
@@ -70,18 +75,50 @@
       font-size: 23px;
       letter-spacing: 0.6px;
       padding: 17px 14px;
+      border: 0;
       border-radius: 15px;
       margin: 15px 0;
+      cursor: pointer;
       transition: transform 0.2s;
     }
 
-    .boton:active {
-      transform: scale(0.97);
-    }
+    .boton:active { transform: scale(0.97); }
 
     .boton:focus-visible {
       outline: 3px solid white;
       outline-offset: 4px;
+    }
+
+    .zona {
+      margin-top: 45px;
+    }
+
+    .zona h2 {
+      font-size: 30px;
+      margin: 0 0 12px;
+    }
+
+    .zona p {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    #mapa {
+      width: 100%;
+      height: 300px;
+      border: 5px solid white;
+      border-radius: 18px;
+      margin: 20px 0;
+      overflow: hidden;
+      background: #f6e9ef;
+    }
+
+    #resultado {
+      min-height: 25px;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.5;
+      margin-top: 15px;
     }
 
     footer {
@@ -107,28 +144,161 @@
       Fresas con crema que alegran tu día 🍓
     </p>
 
-    <a
-      class="boton"
+    <a class="boton"
       href="https://wa.me/525631272154?text=Hola%2C%20quiero%20hacer%20un%20pedido%20de%20Fresa%20Pa%27Llevar%20%F0%9F%8D%93"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+      target="_blank" rel="noopener noreferrer">
       🍓 PEDIR POR WHATSAPP
     </a>
 
-    <a
-      class="boton"
+    <a class="boton"
       href="https://www.instagram.com/fresapallevar/"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+      target="_blank" rel="noopener noreferrer">
       ♡ SÍGUENOS EN INSTAGRAM
     </a>
 
-    <footer>
-      FRESA PA’LLEVAR © 2026
-    </footer>
+    <section class="zona" aria-labelledby="titulo-zona">
+      <h2 id="titulo-zona">🍓 ¿LLEGAMOS HASTA TI?</h2>
+
+      <p>
+        Consulta nuestra zona de entrega de 3 km
+        a la redonda desde Jardín Balbuena, CDMX.
+      </p>
+
+      <div id="mapa" aria-label="Mapa de cobertura de entrega"></div>
+
+      <button class="boton" id="verificar" type="button">
+        📍 VERIFICAR MI UBICACIÓN
+      </button>
+
+      <p id="resultado" role="status" aria-live="polite"></p>
+      <p>
+        La cobertura se calcula en línea recta.
+        La entrega final se confirma por WhatsApp.
+      </p>
+    </section>
+
+    <footer>FRESA PA’LLEVAR © 2026</footer>
   </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // Punto aproximado del centro de Jardín Balbuena.
+    // No representa una dirección particular.
+    const centro = [19.4155, -99.1055];
+    const radioMetros = 3000;
+
+    const mapa = L.map('mapa').setView(centro, 12);
+
+    L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+      }
+    ).addTo(mapa);
+
+    L.circle(centro, {
+      radius: radioMetros,
+      color: '#F20B70',
+      fillColor: '#F20B70',
+      fillOpacity: 0.20,
+      weight: 3
+    }).addTo(mapa);
+
+    L.circleMarker(centro, {
+      radius: 7,
+      color: 'white',
+      fillColor: '#F20B70',
+      fillOpacity: 1,
+      weight: 3
+    }).addTo(mapa)
+      .bindPopup('🍓 Centro aproximado: Jardín Balbuena');
+
+    const resultado = document.getElementById('resultado');
+    let marcadorCliente = null;
+
+    function distanciaMetros(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const rad = Math.PI / 180;
+      const dLat = (lat2 - lat1) * rad;
+      const dLon = (lon2 - lon1) * rad;
+
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * rad) *
+        Math.cos(lat2 * rad) *
+        Math.sin(dLon / 2) ** 2;
+
+      return 2 * R * Math.atan2(
+        Math.sqrt(a),
+        Math.sqrt(1 - a)
+      );
+    }
+
+    document.getElementById('verificar')
+      .addEventListener('click', function () {
+
+        if (!navigator.geolocation) {
+          resultado.textContent =
+            'Tu navegador no permite verificar la ubicación.';
+          return;
+        }
+
+        resultado.textContent =
+          '📍 Buscando tu ubicación...';
+
+        navigator.geolocation.getCurrentPosition(
+          function (posicion) {
+            const lat = posicion.coords.latitude;
+            const lon = posicion.coords.longitude;
+
+            const distancia = distanciaMetros(
+              centro[0], centro[1], lat, lon
+            );
+
+            if (marcadorCliente) {
+              mapa.removeLayer(marcadorCliente);
+            }
+
+            marcadorCliente = L.marker([lat, lon])
+              .addTo(mapa)
+              .bindPopup('📍 Tu ubicación aproximada')
+              .openPopup();
+
+            mapa.setView([lat, lon], 13);
+
+            const precision = posicion.coords.accuracy;
+
+            if (precision > 200 ||
+                Math.abs(distancia - radioMetros) <= precision) {
+              resultado.textContent =
+                '📍 Estás cerca del límite o tu ubicación no es suficientemente precisa. ¡Confirma tu entrega por WhatsApp!';
+            } else if (distancia < radioMetros) {
+              resultado.textContent =
+                '💗 ¡SÍ LLEGAMOS HASTA TI! Estás dentro de nuestra zona de entrega.';
+            } else {
+              resultado.textContent =
+                '🍓 Estás fuera de nuestra zona habitual. ¡Escríbenos por WhatsApp para consultar!';
+            }
+          },
+          function (error) {
+            if (error.code === 1) {
+              resultado.textContent =
+                'Para verificar tu zona, permite el acceso a tu ubicación.';
+            } else {
+              resultado.textContent =
+                'No pudimos obtener tu ubicación. Intenta de nuevo o consulta por WhatsApp.';
+            }
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+          }
+        );
+      });
+  </script>
 </body>
 </html>
 
